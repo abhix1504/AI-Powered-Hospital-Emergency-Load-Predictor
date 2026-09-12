@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mediload — Emergency Arrivals Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}" />
+</head>
+<body>
+
+<!-- ============================= TOP BAR ============================= -->
+<header class="topbar">
+  <div class="topbar__inner">
+    <div class="topbar__brand">
+      <span class="topbar__mark" aria-hidden="true">
+        <svg viewBox="0 0 28 16" width="28" height="16">
+          <polyline points="0,8 6,8 9,2 12,14 15,4 18,11 21,8 28,8" />
+        </svg>
+      </span>
+      <div>
+        <div class="topbar__title">Mediload</div>
+        <div class="topbar__subtitle">Emergency arrivals console</div>
+      </div>
+    </div>
+
+    <div class="topbar__status" id="modelStatus" role="status" aria-live="polite">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Checking model…</span>
+    </div>
+  </div>
+</header>
+
+<main class="console">
+
+  <!-- ============================= PARAMETERS PANEL ============================= -->
+  <section class="panel panel--params" aria-labelledby="paramsHeading">
+    <div class="panel__head">
+      <h1 id="paramsHeading">Forecast inputs</h1>
+      <p class="panel__hint">Set the current hour's context. The trained pipeline handles all scaling and encoding — these are the raw values it expects.</p>
+    </div>
+
+    <form id="predictionForm" novalidate>
+
+      <!-- ---- Calendar context ---- -->
+      <fieldset class="field-group">
+        <legend>Calendar context</legend>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="hour">Hour of day</label>
+            <output class="slider-field__value" id="hourValue" for="hour">12:00</output>
+          </div>
+          <input type="range" id="hour" name="hour" min="0" max="23" step="1" value="12" required
+                 aria-describedby="hourHint" />
+          <div class="slider-field__scale"><span>00:00</span><span>12:00</span><span>23:00</span></div>
+          <span class="field__hint" id="hourHint">24-hour format</span>
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="month">Month</label>
+            <output class="slider-field__value" id="monthValue" for="month">June</output>
+          </div>
+          <input type="range" id="month" name="month" min="1" max="12" step="1" value="6" required />
+          <div class="slider-field__scale"><span>Jan</span><span>Jun</span><span>Dec</span></div>
+        </div>
+
+        <div class="segmented-field">
+          <span class="segmented-field__label">Day of week</span>
+          <div class="segmented" id="dayNameControl" role="radiogroup" aria-label="Day of week">
+            <button type="button" class="segmented__btn" data-value="Monday">Mon</button>
+            <button type="button" class="segmented__btn" data-value="Tuesday">Tue</button>
+            <button type="button" class="segmented__btn" data-value="Wednesday">Wed</button>
+            <button type="button" class="segmented__btn" data-value="Thursday">Thu</button>
+            <button type="button" class="segmented__btn is-active" data-value="Friday">Fri</button>
+            <button type="button" class="segmented__btn" data-value="Saturday">Sat</button>
+            <button type="button" class="segmented__btn" data-value="Sunday">Sun</button>
+          </div>
+          <input type="hidden" id="day_name" name="day_name" value="Friday" required />
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-field">
+            <span class="toggle-field__label">Weekend</span>
+            <div class="segmented segmented--sm" id="weekendControl" role="radiogroup" aria-label="Is weekend">
+              <button type="button" class="segmented__btn" data-value="0">No</button>
+              <button type="button" class="segmented__btn" data-value="1">Yes</button>
+            </div>
+            <input type="hidden" id="is_weekend" name="is_weekend" value="0" required />
+          </div>
+
+          <div class="toggle-field">
+            <span class="toggle-field__label">Public holiday</span>
+            <div class="segmented segmented--sm" id="holidayControl" role="radiogroup" aria-label="Is public holiday">
+              <button type="button" class="segmented__btn is-active" data-value="0">No</button>
+              <button type="button" class="segmented__btn" data-value="1">Yes</button>
+            </div>
+            <input type="hidden" id="is_holiday" name="is_holiday" value="0" required />
+          </div>
+        </div>
+        <p class="field__hint field__hint--inline" id="weekendAutoHint">Weekend is set automatically from the selected day — adjust it if needed.</p>
+      </fieldset>
+
+      <!-- ---- Recent arrivals ---- -->
+      <fieldset class="field-group">
+        <legend>Recent arrivals (lag features)</legend>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="lag_1">1 hour ago</label>
+            <output class="slider-field__value" id="lag_1Value" for="lag_1">15</output>
+          </div>
+          <input type="range" id="lag_1" name="lag_1" min="0" max="80" step="1" value="15" required />
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="lag_2">2 hours ago</label>
+            <output class="slider-field__value" id="lag_2Value" for="lag_2">13</output>
+          </div>
+          <input type="range" id="lag_2" name="lag_2" min="0" max="80" step="1" value="13" required />
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="lag_3">3 hours ago</label>
+            <output class="slider-field__value" id="lag_3Value" for="lag_3">12</output>
+          </div>
+          <input type="range" id="lag_3" name="lag_3" min="0" max="80" step="1" value="12" required />
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="lag_24">Same hour, yesterday</label>
+            <output class="slider-field__value" id="lag_24Value" for="lag_24">14</output>
+          </div>
+          <input type="range" id="lag_24" name="lag_24" min="0" max="80" step="1" value="14" required />
+        </div>
+      </fieldset>
+
+      <!-- ---- Rolling averages ---- -->
+      <fieldset class="field-group">
+        <legend>Rolling averages</legend>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="rolling_mean_3">Last 3 hours</label>
+            <output class="slider-field__value" id="rolling_mean_3Value" for="rolling_mean_3">13.3</output>
+          </div>
+          <input type="range" id="rolling_mean_3" name="rolling_mean_3" min="0" max="80" step="0.1" value="13.3" required />
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="rolling_mean_6">Last 6 hours</label>
+            <output class="slider-field__value" id="rolling_mean_6Value" for="rolling_mean_6">12.8</output>
+          </div>
+          <input type="range" id="rolling_mean_6" name="rolling_mean_6" min="0" max="80" step="0.1" value="12.8" required />
+        </div>
+
+        <div class="slider-field">
+          <div class="slider-field__label-row">
+            <label for="rolling_mean_24">Last 24 hours</label>
+            <output class="slider-field__value" id="rolling_mean_24Value" for="rolling_mean_24">12.1</output>
+          </div>
+          <input type="range" id="rolling_mean_24" name="rolling_mean_24" min="0" max="80" step="0.1" value="12.1" required />
+        </div>
+      </fieldset>
+
+      <div class="panel__actions">
+        <button type="submit" class="btn btn--primary" id="predictBtn">
+          <span id="predictBtnText">Run forecast</span>
+          <span id="predictBtnSpinner" class="spinner" hidden></span>
+        </button>
+        <button type="button" class="btn btn--ghost" id="resetBtn">Reset to defaults</button>
+      </div>
+
+      <p class="form-error" id="formError" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- ============================= FORECAST PANEL ============================= -->
+  <section class="panel panel--forecast" aria-labelledby="forecastHeading">
+    <div class="panel__head">
+      <h2 id="forecastHeading">Next-hour forecast</h2>
+      <p class="panel__hint">Predicted arrivals from the trained regression pipeline.</p>
+    </div>
+
+    <div class="gauge-card" id="gaugeCard">
+      <svg viewBox="0 0 240 150" class="gauge" id="gaugeSvg" aria-hidden="true">
+        <path class="gauge__track" d="M 20 130 A 100 100 0 0 1 220 130" />
+        <path class="gauge__fill" id="gaugeFill" d="M 20 130 A 100 100 0 0 1 220 130" />
+      </svg>
+      <div class="gauge-card__readout">
+        <div class="gauge-card__value" id="resultValue">—</div>
+        <div class="gauge-card__unit">patients / hour</div>
+        <span class="gauge-card__badge" id="resultLoadLevel">Awaiting input</span>
+      </div>
+    </div>
+
+    <dl class="forecast-meta">
+      <div>
+        <dt>Generated</dt>
+        <dd id="resultTimestamp">—</dd>
+      </div>
+      <div>
+        <dt>Scale reference</dt>
+        <dd>Low ≤8 · Moderate ≤18 · High ≤30 · Critical &gt;30</dd>
+      </div>
+    </dl>
+
+    <div class="history" id="historySection" hidden>
+      <h3>Session history</h3>
+      <ul class="history__list" id="historyList"></ul>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>Mediload — scikit-learn regression pipeline served with FastAPI. For operational planning support, not a substitute for clinical judgment.</p>
+</footer>
+
+<script src="{{ url_for('static', path='js/script.js') }}"></script>
+</body>
+</html>
